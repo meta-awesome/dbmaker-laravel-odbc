@@ -12,17 +12,9 @@ use App\BaseModel;
 
 use Closure;
 use RuntimeException;
-use DateTimeInterface;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Illuminate\Support\Collection;
-use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Traits\Macroable;
-use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Support\Traits\ForwardsCalls;
-use Illuminate\Database\Concerns\BuildsQueries;
 use Illuminate\Database\Query\Processors\Processor;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
@@ -33,13 +25,16 @@ class DBMakerBuilder extends Builder
 	/**
 	 * @var DB_IDCap
 	 */
-	private $DB_IDCap;
+    private $DB_IDCap;
     public function __construct(ConnectionInterface $connection,
     									  DBMakerQueryGrammar $grammar = null,
     									  Processor $processor = null)
     {
 
     	$this->DB_IDCap = $connection->getDB_IDCap();
+	if($this->DB_IDCap === null){
+		$this->DB_IDCap = 1;
+	}
     	return parent::__construct($connection, $grammar, $processor);
     }
     
@@ -74,9 +69,7 @@ class DBMakerBuilder extends Builder
     	}
     	
     	
-    	$a=$values;
-    	$b=count($values[0]);
-    	$c=0;
+    	
     	// Finally, we will run this query against the database connection and return
     	// the results. We will need to also flatten these bindings before running
     	// the query so they are all in one huge, flattened array for execution.
@@ -93,8 +86,6 @@ class DBMakerBuilder extends Builder
     	
     }
     
-    
-
     /**
      * Chunk the results of a query by comparing numeric IDs.
      *
@@ -130,7 +121,7 @@ class DBMakerBuilder extends Builder
     		unset($results);
     	} while ($countResults == $count);
     
-    	return true; //test
+    	return true; 
     }
  
     /**
@@ -142,14 +133,12 @@ class DBMakerBuilder extends Builder
      */
     public function pluck($column, $key = null)
     {
-    	if($this->DB_IDCap === 0){
-    
-    	}else{
-    		if(!empty($column))
+    	if($this->DB_IDCap !== 0){
+		if(!empty($column))
     			$column = strtoupper($column);
     		if(!empty($key))
     			$key = strtoupper($key);
-    	}
+    	} 
 
     	$queryResult = $this->onceWithColumns(
     			is_null($key) ? [$column] : [$column, $key],
@@ -182,12 +171,8 @@ class DBMakerBuilder extends Builder
      */
     public function find($id, $columns = ['*'])
     {
-    	if($this->DB_IDCap === 0){
-    		$idName = 'id';
-    	}else{
-    		$idName = 'ID';
-    	}
-    	return $this->where($idName, '=', $id)->first($columns);
+    	 
+    	return $this->where('id', '=', $id)->first($columns);
     }
     
     /**

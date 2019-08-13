@@ -45,7 +45,6 @@ class DBMakerConnection extends Connection
 		return $result;
 	}
 	
-	
 	/**
 	 * Get a new query builder instance.
 	 *
@@ -120,7 +119,7 @@ class DBMakerConnection extends Connection
      */
     public function getDB_IDCap()
     {
-    	return $this->getConfig('options.dbidcap');
+    	return $this->getConfig('options.idcap');
     }
 
 }
