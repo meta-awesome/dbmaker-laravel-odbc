@@ -2,9 +2,10 @@
 /**
  * Created by syscom.
  * User: syscom
- * Date: 17/06/2019
+ * Date: 30/08/2019
  * Time: 15:50
  */
+
 
 namespace DBMaker\ODBC\Schema\Grammars;
 
@@ -23,8 +24,17 @@ class DBMakerGrammar extends Grammar
 	 * @var array
 	 */
 	protected $modifiers = [
-			'Nullable','Default', 'After','Before', 'First',
+			'Nullable','Default', 'After','Before', 'First', 'Increment'
 	];
+	
+	
+	/**
+	 * The possible column serials.
+	 *
+	 * @var array
+	 */
+	//protected $serials = ['bigInteger', 'integer', 'mediumInteger', 'smallInteger', 'tinyInteger', 'serial'];
+	protected $serials = ['serial','bigserial'];
 	
     /**
      * Compile a rename column command.
@@ -39,11 +49,11 @@ class DBMakerGrammar extends Grammar
     {
 
     	$from = $this->wrapTable($blueprint);
-    	return "ALTER TABLE {$from}  MODIFY (".$this->wrapTable($command->from)." TO ".$this->wrapTable($command->to).")";
+    	return "ALTER TABLE {$from}  MODIFY (".$this->wrapTable($command->from)."NAME TO ".$this->wrapTable($command->to).")";
     }
     
     /**
-     * Compile a change column command into a series of SQL statements.
+     * Compile a change column command into a seritypeEnumes of SQL statements.
      *
      * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
      * @param  \Illuminate\Support\Fluent  $command
@@ -390,13 +400,22 @@ class DBMakerGrammar extends Grammar
      */
     protected function modifyDefault(Blueprint $blueprint, Fluent $column)
     {
+    	/*
     	if (! is_null($column->default)) {
     		if(is_numeric($column->default))
     			return ' default '.$this->getDefaultValue($column->default);
     		else 
     			return ' default \''.$this->getDefaultValue($column->default).'\'';
     	}
+    	*/
+    		
+    		if (! is_null($column->default)) {
+    			return ' default '.$this->getDefaultValue($column->default);
+    		}
     }
+    
+ 
+    
     
     /**
      * Format a value so that it can be used in "default" clauses.
@@ -406,14 +425,33 @@ class DBMakerGrammar extends Grammar
      */
     protected function getDefaultValue($value)
     {
-    	if ($value instanceof Expression) {
+    	if($value instanceof Expression) {
     		return $value;
     	}
+    	
+    	
+    	if(is_bool($value))
+    	{
+    		return (int) $value;
+    	}
+    	else if(is_int($value) || is_float($value))
+    	{
+    		return $value;
+    	}
+    	else
+    	{
+    		return "'".$value."'";
+    	}
+    	
     
-    	return is_bool($value)
-    	? "".(int) $value.""
-    			: "".(string) $value."";
+    
     }
+
+
+ 
+
+
+
     
     /**
      * Get the SQL for an unsigned column modifier.
@@ -426,6 +464,22 @@ class DBMakerGrammar extends Grammar
     {
     	if ($column->unsigned) {
     		return ' ';
+    	}
+    }
+    
+    
+    
+    /**
+     * Get the SQL for an auto-increment column modifier.
+     *
+     * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string|null
+     */
+    protected function modifyIncrement(Blueprint $blueprint, Fluent $column)
+    {
+    	if (in_array($column->type, $this->serials) && $column->autoIncrement) {
+    		return ' primary key';
     	}
     }
     
@@ -451,6 +505,9 @@ class DBMakerGrammar extends Grammar
     	return 'bigint';
     }
     
+   
+    
+    
     /**
      * Create the column definition for an integer type.
      *
@@ -463,7 +520,7 @@ class DBMakerGrammar extends Grammar
     }
     
     /**
-     * Create the column definition for an integer type.
+     * Create the column definition for an serial type.
      *
      * @param  Illuminate\Database\Schema\ColumnDefinition $column
      * @return string
@@ -471,6 +528,17 @@ class DBMakerGrammar extends Grammar
     protected function typeSerial(Fluent $column)
     {
     	return 'serial';
+    }
+    
+    /**
+     * Create the column definition for an bigserial type.
+     *
+     * @param  Illuminate\Database\Schema\ColumnDefinition $column
+     * @return string
+     */
+    protected function typeBigserial(Fluent $column)
+    {
+    	return 'bigserial';
     }
     
     /**
@@ -700,7 +768,10 @@ class DBMakerGrammar extends Grammar
      */
     protected function modifyNullable(Blueprint $blueprint, Fluent $column)
     {
-    		return $column->nullable ? '' : ' not null';
+    		if($column->type == 'serial' || $column->type == 'bigserial' )
+    			return '';
+    		else
+    			return $column->nullable ? '' : ' not null';
     }
     
     /**
@@ -744,4 +815,230 @@ class DBMakerGrammar extends Grammar
     		throw new RuntimeException('DBMaker does not support after.');
     	}
     }
+    
+    
+    /**
+     * Compile the command to enable foreign key constraints.
+     *
+     * @return string
+     */
+    public function compileEnableForeignKeyConstraints()
+    {
+    	return "CALL SETSYSTEMOPTION('FKCHK', '1');";
+    }
+    
+    
+    
+    /**
+     * Compile the command to disable foreign key constraints.
+     *
+     * @return string
+     */
+    public function compileDisableForeignKeyConstraints()
+    {
+    	return "CALL SETSYSTEMOPTION('FKCHK', '0');";
+    }
+    
+    
+    /**
+     * Create the column definition for a date-time (with time zone) type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeDateTimeTz(Fluent $column)
+    {
+    	return $this->typeDateTime($column);
+    }
+    
+    
+    
+    
+    /**
+     * Create the column definition for a time (with time zone) type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeTimeTz(Fluent $column)
+    {
+    	return $this->typeTime($column);
+    }
+    
+    
+    
+    /**
+     * Create the column definition for a timestamp (with time zone) type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeTimestampTz(Fluent $column)
+    {
+    	return $this->typeTimestamp($column);
+    }
+    
+    
+    
+    
+    /**
+     * Create the column definition for a uuid type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeUuid(Fluent $column)
+    {
+    	return 'char(36)';
+    }
+    
+    
+    
+    
+    
+    
+    
+    /**
+     * Create the column definition for an IP address type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeIpAddress(Fluent $column)
+    {
+    	return 'varchar(45)';
+    }
+    
+    
+    
+    
+    
+    
+    /**
+     * Create the column definition for a MAC address type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    protected function typeMacAddress(Fluent $column)
+    {
+    	return 'varchar(17)';
+    }
+    
+    
+    
+    
+    /**
+     * Create the column definition for a spatial Geometry type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeGeometry(Fluent $column)
+    {
+    	return 'varchar(128)';
+    }
+    
+    
+    
+    /**
+     * Create the column definition for a spatial Point type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typePoint(Fluent $column)
+    {
+    	return 'varchar(128)';
+    }
+    
+    
+    
+    /**
+     * Create the column definition for a spatial LineString type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeLineString(Fluent $column)
+    {
+    	return "LONG VARCHAR";
+    }
+    
+    /**
+     * Create the column definition for a spatial Polygon type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typePolygon(Fluent $column)
+    {
+    	return "LONG VARCHAR";
+    }
+    
+    /**
+     * Create the column definition for a spatial GeometryCollection type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeGeometryCollection(Fluent $column)
+    {
+
+    	return "LONG VARCHAR";
+    }
+    
+    
+    
+    
+    /**
+     * Create the column definition for a spatial MultiPoint type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeMultiPoint(Fluent $column)
+    {
+    	return "LONG VARCHAR";
+    }
+    
+    /**
+     * Create the column definition for a spatial MultiLineString type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeMultiLineString(Fluent $column)
+    {
+    	return "LONG VARCHAR";
+    }
+    
+    /**
+     * Create the column definition for a spatial MultiPolygon type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return string
+     */
+    public function typeMultiPolygon(Fluent $column)
+    {
+    	return "LONG VARCHAR";
+    }
+    
+    /**
+     * Create the column definition for a generated, computed column type.
+     *
+     * @param  \Illuminate\Support\Fluent  $column
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    protected function typeComputed(Fluent $column)
+    {
+    	throw new RuntimeException('This database driver requires a type, see the virtualAs / storedAs modifiers.');
+    }
+    
+    
+    
+    
+    
 }
