@@ -41,7 +41,7 @@ class DBMakerBlueprint extends Blueprint
 
 
 	/**
-	 * Create a new integer (4-byte) column on the table.
+	 * Create a new serial (4-byte) column on the table.
 	 *
 	 * @param  string  $column
 	 * @return \Illuminate\Database\Schema\ColumnDefinition
@@ -50,10 +50,13 @@ class DBMakerBlueprint extends Blueprint
 	{
 		return $this->addColumn('serial', $column, compact('autoIncrement'));
 	}
+	
+	
+ 
 
 
 	/**
-	 * Create a new integer (8-byte) column on the table.
+	 * Create a new bigserial (8-byte) column on the table.
 	 *
 	 * @param  string  $column
 	 * @return \Illuminate\Database\Schema\ColumnDefinition
@@ -62,6 +65,9 @@ class DBMakerBlueprint extends Blueprint
 	{
 		return $this->addColumn('bigserial', $column, compact('autoIncrement'));
 	}
+	
+	
+	
 	
 	
 }

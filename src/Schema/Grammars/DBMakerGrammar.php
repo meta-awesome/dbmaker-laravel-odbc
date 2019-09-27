@@ -24,7 +24,7 @@ class DBMakerGrammar extends Grammar
 	 * @var array
 	 */
 	protected $modifiers = [
-			'Nullable','Default', 'After','Before', 'First', 'Increment'
+			'Nullable','Default', 'After','Before', 'Increment'
 	];
 	
 	
@@ -33,7 +33,6 @@ class DBMakerGrammar extends Grammar
 	 *
 	 * @var array
 	 */
-	//protected $serials = ['bigInteger', 'integer', 'mediumInteger', 'smallInteger', 'tinyInteger', 'serial'];
 	protected $serials = ['serial','bigserial'];
 	
     /**
@@ -142,7 +141,7 @@ class DBMakerGrammar extends Grammar
      */
     public function compileGetAllTables()
     {
-        return 'select * from SYSTABLE';
+        return 'select TABLE_NAME from SYSTABLE';
     }
     
     /**
@@ -173,16 +172,7 @@ class DBMakerGrammar extends Grammar
     	})->all();
     }
    
-    /**
-     * get index name from Biueprint
-     *
-     * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
-     * @return string
-     */
-    protected function getIndexName(Blueprint $blueprint)
-    {
-    	return (($blueprint -> getCommands())[1]->getAttributes())['index'];
-    }
+    
     
     /**
      * Compile a drop column command.
@@ -333,15 +323,14 @@ class DBMakerGrammar extends Grammar
     		);
     	}
     	else {
-	    	return sprintf('alter table %s add %s %s(%s)',
+	    	return sprintf('alter table %s add %s (%s)',
 	    			$this->wrapTable($blueprint),
 	    			$type,
-	    			$command->algorithm ? ' using '.$command->algorithm : '',
 	    			$this->columnize($command->columns)
 	    	);
     	}
     }
-    
+   
     /**
      * Compile a drop foreign key command.
      *
@@ -400,14 +389,6 @@ class DBMakerGrammar extends Grammar
      */
     protected function modifyDefault(Blueprint $blueprint, Fluent $column)
     {
-    	/*
-    	if (! is_null($column->default)) {
-    		if(is_numeric($column->default))
-    			return ' default '.$this->getDefaultValue($column->default);
-    		else 
-    			return ' default \''.$this->getDefaultValue($column->default).'\'';
-    	}
-    	*/
     		
     		if (! is_null($column->default)) {
     			return ' default '.$this->getDefaultValue($column->default);
@@ -440,35 +421,14 @@ class DBMakerGrammar extends Grammar
     	}
     	else
     	{
-    		return "'".$value."'";
+    		return "'$value'";
     	}
     	
     
     
     }
 
-
- 
-
-
-
-    
-    /**
-     * Get the SQL for an unsigned column modifier.
-     *
-     * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
-     * @param  \Illuminate\Support\Fluent  $column
-     * @return string|null
-     */
-    protected function modifyUnsigned(Blueprint $blueprint, Fluent $column) //DBMaker not support
-    {
-    	if ($column->unsigned) {
-    		return ' ';
-    	}
-    }
-    
-    
-    
+  
     /**
      * Get the SQL for an auto-increment column modifier.
      *
@@ -594,9 +554,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeDateTime(Fluent $column)
     {
-    	$columnType = $column->precision ? "datetime($column->precision)" : 'TIMESTAMP';
-    
-    	return $column->useCurrent ? "$columnType default CURRENT_TIMESTAMP" : $columnType;
+    	return $this->typeTimestamp($column);
     }
     
     /**
@@ -618,7 +576,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeDouble(Fluent $column)
     {
-    	return "decimal({$column->total}, {$column->places})";
+    	return "Double";
     }
     
     /**
@@ -644,7 +602,11 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeFloat(Fluent $column)
     {
-    	return $this->typeDouble($column);
+    	  if ($column->total) {
+            return "Float({$column->total})";
+        }
+
+      return 'Float';
     }
     
     /**
@@ -655,7 +617,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeJson(Fluent $column)
     {
-    	return 'long varchar';
+    	return 'JSONCOLS';
     }
     
     /**
@@ -666,7 +628,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeJsonb(Fluent $column)
     {
-    	return 'long varchar';
+    	return 'JSONCOLS';
     }
     
     /**
@@ -710,9 +672,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeTimestamp(Fluent $column)
     {
-    	$columnType = $column->precision ? "timestamp($column->precision)" : 'timestamp';
-    
-    	return $column->useCurrent ? "$columnType default CURRENT_TIMESTAMP" : $columnType;
+    	return $column->useCurrent ? "TIMESTAMP default CURRENT_TIMESTAMP" : "TIMESTAMP";
     }
     
     /**
@@ -756,7 +716,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function typeTime(Fluent $column)
     {
-    	return $column->precision ? "time($column->precision)" : 'time';
+    	return 'time';
     }
     
     /**
@@ -768,7 +728,7 @@ class DBMakerGrammar extends Grammar
      */
     protected function modifyNullable(Blueprint $blueprint, Fluent $column)
     {
-    		if($column->type == 'serial' || $column->type == 'bigserial' )
+    		if(in_array($column->type,array("serial", "bigserial", "json", "jsonb")))
     			return '';
     		else
     			return $column->nullable ? '' : ' not null';
@@ -801,21 +761,7 @@ class DBMakerGrammar extends Grammar
     		return ' before '.$this->wrap($column->before);
     	}
     }
-    
-    /**
-     * Get the SQL for a "first" column modifier.
-     *
-     * @param  \Illuminate\Database\Schema\Blueprint  $blueprint
-     * @param  \Illuminate\Support\Fluent  $column
-     * @return string|null
-     */
-    protected function modifyFirst(Blueprint $blueprint, Fluent $column)
-    {
-    	if (! is_null($column->first)) {
-    		throw new RuntimeException('DBMaker does not support after.');
-    	}
-    }
-    
+   
     
     /**
      * Compile the command to enable foreign key constraints.
@@ -899,7 +845,7 @@ class DBMakerGrammar extends Grammar
     
     
     /**
-     * Create the column definition for an IP address type.
+     * Create the column definition for an IP4 or IPV6 address type.
      *
      * @param  \Illuminate\Support\Fluent  $column
      * @return string
