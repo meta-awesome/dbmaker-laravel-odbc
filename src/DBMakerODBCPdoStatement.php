@@ -72,8 +72,10 @@ class DBMakerODBCPdoStatement extends PDOStatement {
 	 * @return void
 	 */
 	public function execute($ignore = null) {
-		odbc_execute($this->statement,$this->params);
-		$this->params = [];
+		if (!preg_match('/create table "migrations"/i', $this->query) || MIGRATION_FLAG == 0){
+			odbc_execute($this->statement,$this->params);
+			$this->params = [];
+		}
 	}
 	
 	public function fetchAll($how = NULL, $class_name = NULL, $ctor_args = NULL) {
