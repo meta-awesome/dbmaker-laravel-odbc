@@ -1,5 +1,5 @@
 {
-	"name": "dbmaker/laravel-odbc",
+	"name": "metawesome/laravel-odbc",
 	"description": "DBMaker integration for Laravel framework ",
 	"keywords": [
 		"laravel",
